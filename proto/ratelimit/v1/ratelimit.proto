@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package ratelimit.v1;
+
+option go_package = "proto/ratelimit/v1;ratelimitv1";
+
+service RateLimitService {
+    rpc ShouldRateLimit(RateLimitRequest) returns (RateLimitResponse);
+}
+
+message RateLimitRequest {
+    string domain = 1;
+}
+
+message RateLimitResponse {
+    bool allowed = 1;
+    string message = 2;
+}
