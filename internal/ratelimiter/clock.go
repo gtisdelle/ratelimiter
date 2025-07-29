@@ -9,7 +9,7 @@ type Clock interface {
 type defaultClock struct {
 }
 
-type mockClock struct {
+type MockClock struct {
 	currentTime time.Time
 }
 
@@ -17,20 +17,14 @@ func NewClock() Clock {
 	return defaultClock{}
 }
 
-func NewMockClock() Clock {
-	return &mockClock{
-		currentTime: time.Now(),
-	}
-}
-
 func (c defaultClock) Now() time.Time {
 	return time.Now()
 }
 
-func (c mockClock) Now() time.Time {
-	return time.Now()
+func (c *MockClock) Now() time.Time {
+	return c.currentTime
 }
 
-func (m *mockClock) Advance(d time.Duration) {
+func (m *MockClock) Advance(d time.Duration) {
 	m.currentTime = m.currentTime.Add(d)
 }
