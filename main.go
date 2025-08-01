@@ -38,7 +38,7 @@ func main() {
 	}
 
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     os.Getenv("REDIS_URL"),
+		Addr:     os.Getenv("REDIS_ADDR"),
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
