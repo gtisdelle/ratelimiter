@@ -4,10 +4,12 @@ import (
 	"context"
 	"log"
 	"net"
+	"os"
 	"time"
 
 	"github.com/gtisdelle/ratelimiter/internal/ratelimiter"
 	ratelimitv1 "github.com/gtisdelle/ratelimiter/proto/ratelimit/v1"
+	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -35,11 +37,17 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     os.Getenv("REDIS_URL"),
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+
 	grpcServer := grpc.NewServer()
 	clock := ratelimiter.NewClock()
-	store := ratelimiter.NewMemoryStore(clock)
-	limit := 100
-	windowSize := time.Duration(60) * time.Second
+	store := ratelimiter.NewRedisStore(rdb)
+	limit := 10
+	windowSize := time.Duration(20) * time.Second
 	limiter := ratelimiter.NewRateLimiter(store, clock, limit, windowSize)
 	ratelimitv1.RegisterRateLimitServiceServer(grpcServer, &rateLimitServer{limiter: limiter})
 
