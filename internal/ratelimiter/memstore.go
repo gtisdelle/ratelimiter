@@ -23,7 +23,7 @@ func NewMemoryStore(clock Clock) Store {
 	}
 }
 
-func (s *memoryStore) Increment(key string, ttlms int) (int, error) {
+func (s *memoryStore) Increment(key string, ttl time.Duration) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -32,7 +32,7 @@ func (s *memoryStore) Increment(key string, ttlms int) (int, error) {
 	if !ok || now.After(e.expiresAt) {
 		s.store[key] = entry{
 			count:     1,
-			expiresAt: now.Add(time.Duration(ttlms) * time.Millisecond),
+			expiresAt: now.Add(ttl),
 		}
 	} else {
 		e.count++

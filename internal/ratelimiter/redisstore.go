@@ -17,8 +17,8 @@ func NewRedisStore(rdb *redis.Client) Store {
 	}
 }
 
-func (s *redisStore) Increment(key string, ttlms int) (int, error) {
-	ok, err := s.rdb.SetNX(context.TODO(), key, 1, time.Duration(ttlms)*time.Millisecond).Result()
+func (s *redisStore) Increment(key string, ttl time.Duration) (int, error) {
+	ok, err := s.rdb.SetNX(context.TODO(), key, 1, ttl).Result()
 	if err != nil {
 		return 0, err
 	}

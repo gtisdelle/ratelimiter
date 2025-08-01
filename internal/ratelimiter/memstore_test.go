@@ -11,7 +11,7 @@ func TestIncrementNotExists(t *testing.T) {
 	}
 	s := NewMemoryStore(clock)
 
-	result, err := s.Increment("foo", int(time.Duration(60)*time.Second))
+	result, err := s.Increment("foo", 60*time.Second)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -27,12 +27,12 @@ func TestDoubleIncrement(t *testing.T) {
 	}
 	s := NewMemoryStore(clock)
 
-	_, err := s.Increment("foo", 60000)
+	_, err := s.Increment("foo", 60*time.Second)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	result, err := s.Increment("foo", 60000)
+	result, err := s.Increment("foo", 60*time.Second)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -48,13 +48,13 @@ func TestDoubleIncrementTTL(t *testing.T) {
 	}
 	s := NewMemoryStore(clock)
 
-	_, err := s.Increment("foo", 60000)
+	_, err := s.Increment("foo", 60*time.Second)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	clock.Advance(time.Duration(61) * time.Second)
-	result, err := s.Increment("foo", 60000)
+	clock.Advance(61 * time.Second)
+	result, err := s.Increment("foo", 60*time.Second)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

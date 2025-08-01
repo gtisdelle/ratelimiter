@@ -28,7 +28,7 @@ func NewRateLimiter(store Store, clock Clock, limit int, windowSize time.Duratio
 func (l *limiter) Allow(key string) (bool, error) {
 	windowStart := l.clock.Now().UnixMilli() - (l.clock.Now().UnixMilli() % l.windowSize.Milliseconds())
 	cacheKey := fmt.Sprintf("ratelimiter:v1:%v:%v", key, windowStart)
-	count, err := l.store.Increment(cacheKey, int(l.windowSize.Milliseconds()))
+	count, err := l.store.Increment(cacheKey, l.windowSize)
 	if err != nil {
 		return false, err
 	}
