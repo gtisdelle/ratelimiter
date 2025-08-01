@@ -5,41 +5,6 @@ import (
 	"time"
 )
 
-func TestSetThenGet(t *testing.T) {
-	clock := &MockClock{
-		currentTime: time.Now(),
-	}
-	s := NewMemoryStore(clock)
-	s.Set("foo", 3, 60000)
-
-	result, ok, err := s.Get("foo")
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !ok || result != 3 {
-		t.Fatalf("Get(foo) = (%d, %v); want (3, true)", result, ok)
-	}
-}
-
-func TestSetThenGetTTL(t *testing.T) {
-	clock := &MockClock{
-		currentTime: time.Now(),
-	}
-	s := NewMemoryStore(clock)
-	s.Set("foo", 3, 500)
-
-	clock.Advance(time.Duration(501) * time.Millisecond)
-	result, ok, err := s.Get("foo")
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if ok || result != 0 {
-		t.Fatalf("Get(foo) = (%d, %v); want (0, false)", result, ok)
-	}
-}
-
 func TestIncrementNotExists(t *testing.T) {
 	clock := &MockClock{
 		currentTime: time.Now(),
@@ -56,19 +21,23 @@ func TestIncrementNotExists(t *testing.T) {
 	}
 }
 
-func TestSetThenIncrement(t *testing.T) {
+func TestDoubleIncrement(t *testing.T) {
 	clock := &MockClock{
 		currentTime: time.Now(),
 	}
 	s := NewMemoryStore(clock)
-	s.Set("foo", 3, 60000)
+
+	_, err := s.Increment("foo", 60000)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	result, err := s.Increment("foo", 60000)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if result != 4 {
-		t.Fatalf("Increment(foo, 60) = %d; want 4", result)
+	if result != 2 {
+		t.Fatalf("Increment(foo, 60)<2x> = %d; want 2", result)
 	}
 }

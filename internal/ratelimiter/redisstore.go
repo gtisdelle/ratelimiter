@@ -17,14 +17,6 @@ func NewRedisStore(rdb *redis.Client) Store {
 	}
 }
 
-func (s *redisStore) Get(key string) (int, bool, error) {
-	return 0, false, nil
-}
-
-func (s *redisStore) Set(key string, count int, ttlms int) error {
-	return nil
-}
-
 func (s *redisStore) Increment(key string, ttlms int) (int, error) {
 	ok, err := s.rdb.SetNX(context.TODO(), key, 1, time.Duration(ttlms)*time.Millisecond).Result()
 	if err != nil {
