@@ -41,3 +41,25 @@ func TestDoubleIncrement(t *testing.T) {
 		t.Fatalf("Increment(foo, 60)<2x> = %d; want 2", result)
 	}
 }
+
+func TestDoubleIncrementTTL(t *testing.T) {
+	clock := &MockClock{
+		currentTime: time.Now(),
+	}
+	s := NewMemoryStore(clock)
+
+	_, err := s.Increment("foo", 60000)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	clock.Advance(time.Duration(61) * time.Second)
+	result, err := s.Increment("foo", 60000)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result != 1 {
+		t.Fatalf("Increment(foo, 60)<2x> = %d; want 1", result)
+	}
+}
