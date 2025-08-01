@@ -23,7 +23,7 @@ func TestIncrementNotExists(t *testing.T) {
 
 func TestDoubleIncrement(t *testing.T) {
 	clock := &MockClock{
-		currentTime: time.Now(),
+		currentTime: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 	s := NewMemoryStore(clock)
 
@@ -44,7 +44,7 @@ func TestDoubleIncrement(t *testing.T) {
 
 func TestDoubleIncrementTTL(t *testing.T) {
 	clock := &MockClock{
-		currentTime: time.Now(),
+		currentTime: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 	s := NewMemoryStore(clock)
 
