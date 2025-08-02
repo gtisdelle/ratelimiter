@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"net"
 	"os"
@@ -13,6 +14,12 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+)
+
+var (
+	limit      = flag.Int("limit", 10, "Requests Per Window")
+	windowSize = flag.Duration("window", 20*time.Second, "Window Size")
+	listenAddr = flag.String("listen", ":50051", "Port")
 )
 
 type rateLimitServer struct {
@@ -32,26 +39,22 @@ func (s *rateLimitServer) ShouldRateLimit(ctx context.Context, req *ratelimitv1.
 }
 
 func main() {
-	lis, err := net.Listen("tcp", ":50051")
+	flag.Parse()
+
+	lis, err := net.Listen("tcp", *listenAddr)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     os.Getenv("REDIS_ADDR"),
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})
+	rdb := redis.NewClient(&redis.Options{Addr: os.Getenv("REDIS_ADDR")})
 
 	grpcServer := grpc.NewServer()
 	clock := ratelimiter.NewClock()
 	store := ratelimiter.NewRedisStore(rdb)
-	limit := 10
-	windowSize := time.Duration(20) * time.Second
-	limiter := ratelimiter.NewRateLimiter(store, clock, limit, windowSize)
+	limiter := ratelimiter.NewRateLimiter(store, clock, *limit, *windowSize)
 	ratelimitv1.RegisterRateLimitServiceServer(grpcServer, &rateLimitServer{limiter: limiter})
 
-	log.Println("rate limiter is listening on port 50051...")
+	log.Printf("rate limiter is listening on addr %s...", *listenAddr)
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
