@@ -18,18 +18,13 @@ func NewRedisStore(rdb *redis.Client) Store {
 }
 
 func (s *redisStore) Increment(key string, ttl time.Duration) (int, error) {
-	ok, err := s.rdb.SetNX(context.TODO(), key, 1, ttl).Result()
+	commands, err := s.rdb.Pipelined(context.TODO(), func(p redis.Pipeliner) error {
+		p.SetNX(context.TODO(), key, 0, ttl)
+		p.Incr(context.TODO(), key)
+		return nil
+	})
 	if err != nil {
 		return 0, err
 	}
-	if ok {
-		return 1, nil
-	}
-
-	val, err := s.rdb.Incr(context.TODO(), key).Result()
-	if err != nil {
-		return 0, err
-	}
-
-	return int(val), nil
+	return int(commands[1].(*redis.IntCmd).Val()), nil
 }
