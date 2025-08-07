@@ -6,6 +6,8 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gtisdelle/ratelimiter/internal/ratelimiter"
@@ -54,8 +56,32 @@ func main() {
 	limiter := ratelimiter.NewRateLimiter(store, clock, *limit, *windowSize)
 	ratelimitv1.RegisterRateLimitServiceServer(grpcServer, &rateLimitServer{limiter: limiter})
 
-	log.Printf("rate limiter is listening on addr %s...", *listenAddr)
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		log.Printf("rate limiter is listening on addr %s...", *listenAddr)
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatalf("failed to serve: %v", err)
+		}
+	}()
+
+	<-ctx.Done()
+	log.Println("shutdown signal received, gracefully shutting down…")
+
+	done := make(chan struct{})
+	go func() {
+		grpcServer.GracefulStop()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		log.Println("server gracefully closed")
+
+	// need to handle this case so that hung requests cannot prevent a shutdown
+	case <-time.After(10 * time.Second):
+		log.Println("timeout reached, forcing grpc server to stop...")
+		grpcServer.Stop()
 	}
 }
