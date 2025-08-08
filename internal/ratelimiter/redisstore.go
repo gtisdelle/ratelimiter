@@ -2,6 +2,7 @@ package ratelimiter
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -24,7 +25,14 @@ func (s *redisStore) Increment(key string, ttl time.Duration) (int, error) {
 		return nil
 	})
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("pipeline exec: %w", err)
 	}
-	return int(commands[1].(*redis.IntCmd).Val()), nil
+	incrCmd, ok := commands[1].(*redis.IntCmd)
+	if !ok {
+		return 0, fmt.Errorf("unexpected pipeline response type: %T", commands[1])
+	}
+	if err := incrCmd.Err(); err != nil {
+		return 0, fmt.Errorf("redis INCR command: %w", err)
+	}
+	return int(incrCmd.Val()), nil
 }

@@ -40,6 +40,14 @@ func (s *rateLimitServer) ShouldRateLimit(ctx context.Context, req *ratelimitv1.
 	}, nil
 }
 
+func unaryLoggingInterceptor(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+	m, err := handler(ctx, req)
+	if err != nil {
+		log.Printf("RPC failed: %v", err)
+	}
+	return m, err
+}
+
 func main() {
 	flag.Parse()
 
@@ -50,7 +58,7 @@ func main() {
 
 	rdb := redis.NewClient(&redis.Options{Addr: os.Getenv("REDIS_ADDR")})
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(unaryLoggingInterceptor))
 	clock := ratelimiter.NewClock()
 	store := ratelimiter.NewRedisStore(rdb)
 	limiter := ratelimiter.NewRateLimiter(store, clock, *limit, *windowSize)
