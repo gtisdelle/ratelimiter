@@ -1,7 +1,10 @@
 package ratelimiter
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type Store interface {
-	Increment(key string, ttl time.Duration) (int, error)
+	Increment(ctx context.Context, key string, ttl time.Duration) (int, error)
 }

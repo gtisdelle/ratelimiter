@@ -30,7 +30,7 @@ type rateLimitServer struct {
 }
 
 func (s *rateLimitServer) ShouldRateLimit(ctx context.Context, req *ratelimitv1.RateLimitRequest) (*ratelimitv1.RateLimitResponse, error) {
-	allowed, err := s.limiter.Allow(req.Domain)
+	allowed, err := s.limiter.Allow(ctx, req.Domain)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "rate limit check failed: %v", err)
 	}

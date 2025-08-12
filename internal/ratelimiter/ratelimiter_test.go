@@ -1,6 +1,7 @@
 package ratelimiter
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -9,7 +10,7 @@ type fakeStore struct {
 	incrFunc func() (int, error)
 }
 
-func (s fakeStore) Increment(key string, ttl time.Duration) (int, error) {
+func (s fakeStore) Increment(ctx context.Context, key string, ttl time.Duration) (int, error) {
 	return s.incrFunc()
 }
 
@@ -22,7 +23,7 @@ func TestAllowUnderLimit(t *testing.T) {
 	windowSize := time.Duration(500) * time.Millisecond
 	limiter := NewRateLimiter(store, clock, limit, windowSize)
 
-	result, err := limiter.Allow("foo")
+	result, err := limiter.Allow(t.Context(), "foo")
 
 	if err != nil {
 		t.Fatalf("unexpcted error: %v", err)
@@ -41,7 +42,7 @@ func TestAllowOverLimit(t *testing.T) {
 	windowSize := time.Duration(500) * time.Millisecond
 	limiter := NewRateLimiter(store, clock, limit, windowSize)
 
-	result, err := limiter.Allow("foo")
+	result, err := limiter.Allow(t.Context(), "foo")
 
 	if err != nil {
 		t.Fatalf("unexpcted error: %v", err)
