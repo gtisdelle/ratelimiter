@@ -18,6 +18,19 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+var quietCodes = map[codes.Code]struct{}{
+	codes.Canceled:           {},
+	codes.InvalidArgument:    {},
+	codes.NotFound:           {},
+	codes.AlreadyExists:      {},
+	codes.PermissionDenied:   {},
+	codes.ResourceExhausted:  {},
+	codes.FailedPrecondition: {},
+	codes.Aborted:            {},
+	codes.OutOfRange:         {},
+	codes.Unauthenticated:    {},
+}
+
 var (
 	limit      = flag.Int("limit", 10, "Requests Per Window")
 	windowSize = flag.Duration("window", 20*time.Second, "Window Size")
@@ -30,6 +43,13 @@ type rateLimitServer struct {
 }
 
 func (s *rateLimitServer) ShouldRateLimit(ctx context.Context, req *ratelimitv1.RateLimitRequest) (*ratelimitv1.RateLimitResponse, error) {
+	if req == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "request is nil")
+	}
+	if req.Domain == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "domain is required")
+	}
+
 	allowed, err := s.limiter.Allow(ctx, req.Domain)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "rate limit check failed: %v", err)
@@ -40,10 +60,14 @@ func (s *rateLimitServer) ShouldRateLimit(ctx context.Context, req *ratelimitv1.
 	}, nil
 }
 
-func unaryLoggingInterceptor(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+func unaryLoggingInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	m, err := handler(ctx, req)
-	if err != nil {
-		log.Printf("RPC failed: %v", err)
+	if err == nil {
+		return m, err
+	}
+	code := status.Code(err)
+	if _, ok := quietCodes[code]; !ok {
+		log.Printf("rpc=%s code=%s err=%v", info.FullMethod, code, err)
 	}
 	return m, err
 }
