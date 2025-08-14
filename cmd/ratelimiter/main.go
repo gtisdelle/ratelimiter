@@ -11,10 +11,14 @@ import (
 	"time"
 
 	"github.com/gtisdelle/ratelimiter/internal/ratelimiter"
+	"github.com/gtisdelle/ratelimiter/internal/server"
 	ratelimitv1 "github.com/gtisdelle/ratelimiter/proto/ratelimit/v1"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	grpchealth "google.golang.org/grpc/health"
+	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 )
 
@@ -87,6 +91,12 @@ func main() {
 	store := ratelimiter.NewRedisStore(rdb)
 	limiter := ratelimiter.NewRateLimiter(store, clock, *limit, *windowSize)
 	ratelimitv1.RegisterRateLimitServiceServer(grpcServer, &rateLimitServer{limiter: limiter})
+
+	hs := grpchealth.NewServer()
+	reflection.Register(grpcServer)
+	healthgrpc.RegisterHealthServer(grpcServer, hs)
+	healthCancel := server.StartReadinessReporter(context.Background(), hs, rdb)
+	defer healthCancel()
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
