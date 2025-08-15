@@ -15,4 +15,4 @@ COPY --from=builder /app/ratelimiter .
 
 EXPOSE 50051
 
-ENTRYPOINT [ "./ratelimiter", "--window=100s", "--limit=5" ]
+ENTRYPOINT [ "./ratelimiter" ]

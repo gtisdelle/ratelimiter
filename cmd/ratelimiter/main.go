@@ -39,6 +39,7 @@ var (
 	limit      = flag.Int("limit", 10, "Requests Per Window")
 	windowSize = flag.Duration("window", 20*time.Second, "Window Size")
 	listenAddr = flag.String("listen", ":50051", "Port")
+	reflect    = flag.Bool("reflect", false, "enable server reflection (use for dev only)")
 )
 
 type rateLimitServer struct {
@@ -92,8 +93,12 @@ func main() {
 	limiter := ratelimiter.NewRateLimiter(store, clock, *limit, *windowSize)
 	ratelimitv1.RegisterRateLimitServiceServer(grpcServer, &rateLimitServer{limiter: limiter})
 
+	if *reflect {
+		log.Println("reflection enabled")
+		reflection.Register(grpcServer)
+	}
+
 	hs := grpchealth.NewServer()
-	reflection.Register(grpcServer)
 	healthgrpc.RegisterHealthServer(grpcServer, hs)
 	healthCancel := server.StartReadinessReporter(context.Background(), hs, rdb)
 	defer healthCancel()
