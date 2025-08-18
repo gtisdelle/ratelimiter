@@ -36,9 +36,9 @@ var quietCodes = map[codes.Code]struct{}{
 }
 
 var (
-	limit      = flag.Int("limit", 10, "Requests Per Window")
-	windowSize = flag.Duration("window", 20*time.Second, "Window Size")
-	listenAddr = flag.String("listen", ":50051", "Port")
+	bucketSize = flag.Int("bucket", 10, "size of the token bucket")
+	rate       = flag.Int("rate", 1, "rate that the token bucket refills")
+	listenAddr = flag.String("listen", ":50051", "port")
 	reflect    = flag.Bool("reflect", false, "enable server reflection (use for dev only)")
 )
 
@@ -89,8 +89,8 @@ func main() {
 
 	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(unaryLoggingInterceptor))
 	clock := ratelimiter.NewClock()
-	store := ratelimiter.NewRedisStore(rdb)
-	limiter := ratelimiter.NewRateLimiter(store, clock, *limit, *windowSize)
+	store := ratelimiter.NewRedisStore(rdb, clock, ratelimiter.Config{BucketSize: *bucketSize, Rate: *rate})
+	limiter := ratelimiter.NewRateLimiter(store)
 	ratelimitv1.RegisterRateLimitServiceServer(grpcServer, &rateLimitServer{limiter: limiter})
 
 	if *reflect {

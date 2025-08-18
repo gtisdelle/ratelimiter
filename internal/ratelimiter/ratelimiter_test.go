@@ -3,25 +3,23 @@ package ratelimiter
 import (
 	"context"
 	"testing"
-	"time"
 )
 
 type fakeStore struct {
-	incrFunc func() (int, error)
+	allowFunc func() (bool, error)
 }
 
-func (s fakeStore) Increment(ctx context.Context, key string, ttl time.Duration) (int, error) {
-	return s.incrFunc()
+func (s fakeStore) Allow(ctx context.Context, key string) (bool, error) {
+	return s.allowFunc()
 }
+
+var _ Store = fakeStore{}
 
 func TestAllowUnderLimit(t *testing.T) {
-	clock := &MockClock{currentTime: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)}
 	store := fakeStore{
-		incrFunc: func() (int, error) { return 1, nil },
+		allowFunc: func() (bool, error) { return true, nil },
 	}
-	limit := 10
-	windowSize := time.Duration(500) * time.Millisecond
-	limiter := NewRateLimiter(store, clock, limit, windowSize)
+	limiter := NewRateLimiter(store)
 
 	result, err := limiter.Allow(t.Context(), "foo")
 
@@ -34,13 +32,10 @@ func TestAllowUnderLimit(t *testing.T) {
 }
 
 func TestAllowOverLimit(t *testing.T) {
-	clock := &MockClock{currentTime: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)}
 	store := fakeStore{
-		incrFunc: func() (int, error) { return 11, nil },
+		allowFunc: func() (bool, error) { return false, nil },
 	}
-	limit := 10
-	windowSize := time.Duration(500) * time.Millisecond
-	limiter := NewRateLimiter(store, clock, limit, windowSize)
+	limiter := NewRateLimiter(store)
 
 	result, err := limiter.Allow(t.Context(), "foo")
 

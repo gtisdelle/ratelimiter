@@ -3,7 +3,6 @@ package ratelimiter
 import (
 	"context"
 	"fmt"
-	"time"
 )
 
 type RateLimiter interface {
@@ -11,29 +10,20 @@ type RateLimiter interface {
 }
 
 type limiter struct {
-	store      Store
-	clock      Clock
-	limit      int
-	windowSize time.Duration
+	store Store
 }
 
-func NewRateLimiter(store Store, clock Clock, limit int, windowSize time.Duration) RateLimiter {
+func NewRateLimiter(store Store) RateLimiter {
 	return &limiter{
-		store:      store,
-		clock:      clock,
-		limit:      limit,
-		windowSize: windowSize,
+		store: store,
 	}
 }
 
 func (l *limiter) Allow(ctx context.Context, key string) (bool, error) {
-	now := l.clock.Now().UnixMilli()
-	windowStart := now - (now % l.windowSize.Milliseconds())
-	cacheKey := fmt.Sprintf("ratelimiter:v1:%v:%v", key, windowStart)
-	count, err := l.store.Increment(ctx, cacheKey, l.windowSize)
+	cacheKey := fmt.Sprintf("ratelimiter:v1:%v", key)
+	allow, err := l.store.Allow(ctx, cacheKey)
 	if err != nil {
 		return false, err
 	}
-
-	return count <= l.limit, nil
+	return allow, nil
 }
