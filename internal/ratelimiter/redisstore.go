@@ -38,6 +38,7 @@ func (s *redisStore) Allow(ctx context.Context, key string) (bool, error) {
 
 	-- all data nil is interpreted to mean no value for tenant is set yet
 	if tokens == nil and lastRefill == nil then
+	  redis.log(redis.LOG_WARNING, "Miss - tokens: " .. tostring(tokens) .. ", lastRefill: " .. tostring(lastRefill))
 	  tokens = capacity
 	  lastRefill = now
 	end
@@ -60,7 +61,7 @@ func (s *redisStore) Allow(ctx context.Context, key string) (bool, error) {
 	lastRefill = now
 
 	redis.call("HMSET", key, "tokens", tokens, "lastRefill", lastRefill)
-	local ttl = (capacity / rate) * 1000
+	local ttl = math.ceil(capacity / rate)
 	redis.call("EXPIRE", key, ttl)
 
 	return allow
