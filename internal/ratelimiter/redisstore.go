@@ -60,8 +60,9 @@ func (s *redisStore) Allow(ctx context.Context, key string) (bool, error) {
 	lastRefill = now
 
 	redis.call("HMSET", key, "tokens", tokens, "lastRefill", lastRefill)
+	local ttl = (capacity / rate) * 1000
+	redis.call("EXPIRE", key, ttl)
 
-	-- TODO: set ttl on key so that it expires if it sits at capacity for a while
 	return allow
 	`)
 
