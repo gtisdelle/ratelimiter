@@ -5,5 +5,5 @@ import (
 )
 
 type Store interface {
-	Allow(ctx context.Context, key string) (bool, error)
+	Allow(ctx context.Context, key limitKey) (bool, error)
 }

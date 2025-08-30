@@ -3,13 +3,15 @@ package ratelimiter
 import (
 	"context"
 	"testing"
+
+	ratelimitv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/common/ratelimit/v3"
 )
 
 type fakeStore struct {
 	allowFunc func() (bool, error)
 }
 
-func (s fakeStore) Allow(ctx context.Context, key string) (bool, error) {
+func (s fakeStore) Allow(ctx context.Context, key limitKey) (bool, error) {
 	return s.allowFunc()
 }
 
@@ -21,7 +23,7 @@ func TestAllowUnderLimit(t *testing.T) {
 	}
 	limiter := NewRateLimiter(store)
 
-	result, err := limiter.Allow(t.Context(), "foo")
+	result, err := limiter.Allow(t.Context(), "foo", make([]*ratelimitv3.RateLimitDescriptor, 0))
 
 	if err != nil {
 		t.Fatalf("unexpcted error: %v", err)
@@ -36,8 +38,9 @@ func TestAllowOverLimit(t *testing.T) {
 		allowFunc: func() (bool, error) { return false, nil },
 	}
 	limiter := NewRateLimiter(store)
-
-	result, err := limiter.Allow(t.Context(), "foo")
+	descriptors := []*ratelimitv3.RateLimitDescriptor{
+		{Entries: []*ratelimitv3.RateLimitDescriptor_Entry{{Key: "type", Value: "legacy"}}}}
+	result, err := limiter.Allow(t.Context(), "foo", descriptors)
 
 	if err != nil {
 		t.Fatalf("unexpcted error: %v", err)

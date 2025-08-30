@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	ratelimitv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/common/ratelimit/v3"
 	"github.com/gtisdelle/ratelimiter/internal/ratelimiter"
 	"github.com/gtisdelle/ratelimiter/internal/server"
 	ratelimitv1 "github.com/gtisdelle/ratelimiter/proto/ratelimit/v1"
@@ -55,7 +56,9 @@ func (s *rateLimitServer) ShouldRateLimit(ctx context.Context, req *ratelimitv1.
 		return nil, status.Errorf(codes.InvalidArgument, "domain is required")
 	}
 
-	allowed, err := s.limiter.Allow(ctx, req.Domain)
+	descriptors := []*ratelimitv3.RateLimitDescriptor{
+		{Entries: []*ratelimitv3.RateLimitDescriptor_Entry{{Key: "type", Value: "legacy"}}}}
+	allowed, err := s.limiter.Allow(ctx, req.Domain, descriptors)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "rate limit check failed: %v", err)
 	}
