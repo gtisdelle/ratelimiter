@@ -32,6 +32,7 @@ func (s *redisStore) Allow(ctx context.Context, key limitKey) (bool, error) {
 	local rate = tonumber(ARGV[1])
 	local capacity = tonumber(ARGV[2])
 	local now = tonumber(ARGV[3])
+	local hits = tonumber(ARGV[4])
 	local result = redis.call("HMGET", key, "tokens", "lastRefill")
 	local tokens = tonumber(result[1])
 	local lastRefill = tonumber(result[2])
@@ -52,23 +53,25 @@ func (s *redisStore) Allow(ctx context.Context, key limitKey) (bool, error) {
 	tokens = math.min(tokens + (rate * delta), capacity)
 
 	local allow = 0
-	if tokens >= 1 then
+	if tokens >= hits then
 	  allow = 1
 	else
 	  allow = 0
 	end
-	tokens = math.max(tokens - 1, 0)
+	tokens = math.max(tokens - hits, 0)
 	lastRefill = now
 
 	redis.call("HMSET", key, "tokens", tokens, "lastRefill", lastRefill)
 	local ttl = math.ceil(capacity / rate)
 	redis.call("EXPIRE", key, ttl)
+	
+	-- redis.log(redis.LOG_WARNING, "Usage consumed - tokens: " .. tostring(tokens) .. ", lastRefill: " .. tostring(lastRefill) .. ", allow: " .. allow)
 
 	return allow
 	`)
 
 	keys := []string{key.String()}
-	args := []any{s.cfg.Rate, s.cfg.BucketSize, s.clock.Now().UnixMilli()}
+	args := []any{s.cfg.Rate, s.cfg.BucketSize, s.clock.Now().UnixMilli(), key.Hits()}
 	result, err := lua.Eval(ctx, s.rdb, keys, args).Result()
 	if err != nil {
 		return false, fmt.Errorf("token bucket lua script: %w", err)

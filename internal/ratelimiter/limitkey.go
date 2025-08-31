@@ -10,13 +10,23 @@ import (
 type limitKey struct {
 	domain     string
 	descriptor *rlsv3common.RateLimitDescriptor
+	hits       uint64
 }
 
-func NewLimitKey(domain string, descriptor *rlsv3common.RateLimitDescriptor) limitKey {
+func NewLimitKey(domain string, hits uint64, descriptor *rlsv3common.RateLimitDescriptor) limitKey {
 	return limitKey{
 		domain:     domain,
 		descriptor: descriptor,
+		hits:       hits,
 	}
+}
+
+func (lk *limitKey) Hits() uint64 {
+	if lk.descriptor.HitsAddend != nil {
+		return lk.descriptor.GetHitsAddend().Value
+	}
+
+	return lk.hits
 }
 
 func (lk *limitKey) String() string {

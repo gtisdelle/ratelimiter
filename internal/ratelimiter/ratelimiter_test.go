@@ -23,7 +23,7 @@ func TestAllowUnderLimit(t *testing.T) {
 	}
 	limiter := NewRateLimiter(store)
 
-	result, err := limiter.Allow(t.Context(), "foo", make([]*ratelimitv3.RateLimitDescriptor, 0))
+	result, err := limiter.Allow(t.Context(), "foo", 1, make([]*ratelimitv3.RateLimitDescriptor, 0))
 
 	if err != nil {
 		t.Fatalf("unexpcted error: %v", err)
@@ -40,7 +40,7 @@ func TestAllowOverLimit(t *testing.T) {
 	limiter := NewRateLimiter(store)
 	descriptors := []*ratelimitv3.RateLimitDescriptor{
 		{Entries: []*ratelimitv3.RateLimitDescriptor_Entry{{Key: "type", Value: "legacy"}}}}
-	result, err := limiter.Allow(t.Context(), "foo", descriptors)
+	result, err := limiter.Allow(t.Context(), "foo", 1, descriptors)
 
 	if err != nil {
 		t.Fatalf("unexpcted error: %v", err)

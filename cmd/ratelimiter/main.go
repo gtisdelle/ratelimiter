@@ -58,7 +58,7 @@ func (s *rateLimitServer) ShouldRateLimit(ctx context.Context, req *ratelimitv1.
 
 	descriptors := []*ratelimitv3.RateLimitDescriptor{
 		{Entries: []*ratelimitv3.RateLimitDescriptor_Entry{{Key: "type", Value: "legacy"}}}}
-	allowed, err := s.limiter.Allow(ctx, req.Domain, descriptors)
+	allowed, err := s.limiter.Allow(ctx, req.Domain, 1, descriptors)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "rate limit check failed: %v", err)
 	}

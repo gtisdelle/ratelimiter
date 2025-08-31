@@ -7,7 +7,7 @@ import (
 )
 
 type RateLimiter interface {
-	Allow(ctx context.Context, domain string, descriptors []*rlsv3common.RateLimitDescriptor) (bool, error)
+	Allow(ctx context.Context, domain string, hits uint64, descriptors []*rlsv3common.RateLimitDescriptor) (bool, error)
 }
 
 type limiter struct {
@@ -20,9 +20,9 @@ func NewRateLimiter(store Store) RateLimiter {
 	}
 }
 
-func (l *limiter) Allow(ctx context.Context, domain string, descriptors []*rlsv3common.RateLimitDescriptor) (bool, error) {
+func (l *limiter) Allow(ctx context.Context, domain string, hits uint64, descriptors []*rlsv3common.RateLimitDescriptor) (bool, error) {
 	for _, descriptor := range descriptors {
-		key := NewLimitKey(domain, descriptor)
+		key := NewLimitKey(domain, hits, descriptor)
 		allow, err := l.store.Allow(ctx, key)
 		if err != nil {
 			return false, err
