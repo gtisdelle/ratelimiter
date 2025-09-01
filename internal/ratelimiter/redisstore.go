@@ -26,7 +26,7 @@ func NewRedisStore(rdb *redis.Client, clock Clock, cfg Config) Store {
 	}
 }
 
-func (s *redisStore) Allow(ctx context.Context, key limitKey) (bool, error) {
+func (s *redisStore) Allow(ctx context.Context, key string, hits uint64) (bool, error) {
 	lua := redis.NewScript(`
 	local key = KEYS[1]
 	local rate = tonumber(ARGV[1])
@@ -70,8 +70,8 @@ func (s *redisStore) Allow(ctx context.Context, key limitKey) (bool, error) {
 	return allow
 	`)
 
-	keys := []string{key.String()}
-	args := []any{s.cfg.Rate, s.cfg.BucketSize, s.clock.Now().UnixMilli(), key.Hits()}
+	keys := []string{key}
+	args := []any{s.cfg.Rate, s.cfg.BucketSize, s.clock.Now().UnixMilli(), hits}
 	result, err := lua.Eval(ctx, s.rdb, keys, args).Result()
 	if err != nil {
 		return false, fmt.Errorf("token bucket lua script: %w", err)

@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	rlsv3 "github.com/envoyproxy/go-control-plane/envoy/service/ratelimit/v3"
+
 	ratelimitv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/common/ratelimit/v3"
 )
 
@@ -11,7 +13,7 @@ type fakeStore struct {
 	allowFunc func() (bool, error)
 }
 
-func (s fakeStore) Allow(ctx context.Context, key limitKey) (bool, error) {
+func (s fakeStore) Allow(ctx context.Context, key string, hits uint64) (bool, error) {
 	return s.allowFunc()
 }
 
@@ -28,8 +30,8 @@ func TestAllowUnderLimit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpcted error: %v", err)
 	}
-	if !result {
-		t.Fatalf("Allow(\"foo\") = %v; want true", result)
+	if result.OverallCode != rlsv3.RateLimitResponse_OK {
+		t.Fatalf("Allow(\"foo\") = %v; want 1", result)
 	}
 }
 
@@ -45,7 +47,7 @@ func TestAllowOverLimit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpcted error: %v", err)
 	}
-	if result {
-		t.Fatalf("Allow(\"foo\") = %v; want false", result)
+	if result.OverallCode != rlsv3.RateLimitResponse_OVER_LIMIT {
+		t.Fatalf("Allow(\"foo\") = %v; want 2", result)
 	}
 }

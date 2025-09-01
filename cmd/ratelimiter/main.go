@@ -10,10 +10,9 @@ import (
 	"syscall"
 	"time"
 
-	ratelimitv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/common/ratelimit/v3"
+	rlsv3 "github.com/envoyproxy/go-control-plane/envoy/service/ratelimit/v3"
 	"github.com/gtisdelle/ratelimiter/internal/ratelimiter"
 	"github.com/gtisdelle/ratelimiter/internal/server"
-	ratelimitv1 "github.com/gtisdelle/ratelimiter/proto/ratelimit/v1"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -44,11 +43,11 @@ var (
 )
 
 type rateLimitServer struct {
-	ratelimitv1.UnimplementedRateLimitServiceServer
+	rlsv3.UnimplementedRateLimitServiceServer
 	limiter ratelimiter.RateLimiter
 }
 
-func (s *rateLimitServer) ShouldRateLimit(ctx context.Context, req *ratelimitv1.RateLimitRequest) (*ratelimitv1.RateLimitResponse, error) {
+func (s *rateLimitServer) ShouldRateLimit(ctx context.Context, req *rlsv3.RateLimitRequest) (*rlsv3.RateLimitResponse, error) {
 	if req == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "request is nil")
 	}
@@ -56,17 +55,16 @@ func (s *rateLimitServer) ShouldRateLimit(ctx context.Context, req *ratelimitv1.
 		return nil, status.Errorf(codes.InvalidArgument, "domain is required")
 	}
 
-	descriptors := []*ratelimitv3.RateLimitDescriptor{
-		{Entries: []*ratelimitv3.RateLimitDescriptor_Entry{{Key: "type", Value: "legacy"}}}}
-	allowed, err := s.limiter.Allow(ctx, req.Domain, 1, descriptors)
+	res, err := s.limiter.Allow(ctx, req.Domain, uint64(req.HitsAddend), req.Descriptors)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "rate limit check failed: %v", err)
+		// TODO
+		return nil, nil
 	}
 
-	return &ratelimitv1.RateLimitResponse{
-		Allowed: allowed,
-	}, nil
+	return res, nil
 }
+
+var _ rlsv3.RateLimitServiceServer = &rateLimitServer{}
 
 func unaryLoggingInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	m, err := handler(ctx, req)
@@ -94,7 +92,8 @@ func main() {
 	clock := ratelimiter.NewClock()
 	store := ratelimiter.NewRedisStore(rdb, clock, ratelimiter.Config{BucketSize: *bucketSize, Rate: *rate})
 	limiter := ratelimiter.NewRateLimiter(store)
-	ratelimitv1.RegisterRateLimitServiceServer(grpcServer, &rateLimitServer{limiter: limiter})
+	// ratelimitv1.RegisterRateLimitServiceServer(grpcServer, &rateLimitServer{limiter: limiter})
+	rlsv3.RegisterRateLimitServiceServer(grpcServer, &rateLimitServer{limiter: limiter})
 
 	if *reflect {
 		log.Println("reflection enabled")
