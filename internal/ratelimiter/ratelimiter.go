@@ -13,23 +13,23 @@ var (
 	DEFAULT = "DEFAULT"
 )
 
-type RateLimiter interface {
-	Allow(ctx context.Context, domain string, hits uint64, descriptors []*rlsv3common.RateLimitDescriptor) (*rlsv3.RateLimitResponse, error)
+type store interface {
+	Allow(ctx context.Context, key string, hits uint64) (bool, int, error)
 }
 
-type limiter struct {
-	store        Store
+type Limiter struct {
+	store        store
 	defaultLimit int
 }
 
-func NewRateLimiter(store Store, defaultLimit int) RateLimiter {
-	return &limiter{
+func NewRateLimiter(store store, defaultLimit int) *Limiter {
+	return &Limiter{
 		store:        store,
 		defaultLimit: defaultLimit,
 	}
 }
 
-func (l *limiter) Allow(ctx context.Context, domain string, hits uint64, descriptors []*rlsv3common.RateLimitDescriptor) (*rlsv3.RateLimitResponse, error) {
+func (l *Limiter) Allow(ctx context.Context, domain string, hits uint64, descriptors []*rlsv3common.RateLimitDescriptor) (*rlsv3.RateLimitResponse, error) {
 	statuses := make([]*rlsv3.RateLimitResponse_DescriptorStatus, 0)
 	overall := rlsv3.RateLimitResponse_OK
 	for _, descriptor := range descriptors {

@@ -3,9 +3,14 @@ package ratelimiter
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
+
+type clock interface {
+	now() time.Time
+}
 
 type Config struct {
 	BucketSize int
@@ -14,11 +19,11 @@ type Config struct {
 
 type redisStore struct {
 	rdb   *redis.Client
-	clock Clock
+	clock clock
 	cfg   Config
 }
 
-func NewRedisStore(rdb *redis.Client, clock Clock, cfg Config) Store {
+func NewRedisStore(rdb *redis.Client, clock clock, cfg Config) store {
 	return &redisStore{
 		rdb:   rdb,
 		clock: clock,
@@ -71,7 +76,7 @@ func (s *redisStore) Allow(ctx context.Context, key string, hits uint64) (bool, 
 	`)
 
 	keys := []string{key}
-	args := []any{s.cfg.Rate, s.cfg.BucketSize, s.clock.Now().UnixMilli(), hits}
+	args := []any{s.cfg.Rate, s.cfg.BucketSize, s.clock.now().UnixMilli(), hits}
 	result, err := lua.Eval(ctx, s.rdb, keys, args).Result()
 	if err != nil {
 		return false, 0, fmt.Errorf("token bucket lua script: %w", err)
@@ -94,5 +99,3 @@ func (s *redisStore) Allow(ctx context.Context, key string, hits uint64) (bool, 
 
 	return allow > 0, int(remaining), nil
 }
-
-var _ Store = &redisStore{}

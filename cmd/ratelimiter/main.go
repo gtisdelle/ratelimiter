@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	rlsv3common "github.com/envoyproxy/go-control-plane/envoy/extensions/common/ratelimit/v3"
 	rlsv3 "github.com/envoyproxy/go-control-plane/envoy/service/ratelimit/v3"
 	"github.com/gtisdelle/ratelimiter/internal/ratelimiter"
 	"github.com/gtisdelle/ratelimiter/internal/server"
@@ -42,9 +43,13 @@ var (
 	reflect    = flag.Bool("reflect", false, "enable server reflection (use for dev only)")
 )
 
+type limiter interface {
+	Allow(ctx context.Context, domain string, hits uint64, descriptors []*rlsv3common.RateLimitDescriptor) (*rlsv3.RateLimitResponse, error)
+}
+
 type rateLimitServer struct {
 	rlsv3.UnimplementedRateLimitServiceServer
-	limiter ratelimiter.RateLimiter
+	limiter limiter
 }
 
 func (s *rateLimitServer) ShouldRateLimit(ctx context.Context, req *rlsv3.RateLimitRequest) (*rlsv3.RateLimitResponse, error) {
@@ -92,7 +97,6 @@ func main() {
 	clock := ratelimiter.NewClock()
 	store := ratelimiter.NewRedisStore(rdb, clock, ratelimiter.Config{BucketSize: *bucketSize, Rate: *rate})
 	limiter := ratelimiter.NewRateLimiter(store, *bucketSize)
-	// ratelimitv1.RegisterRateLimitServiceServer(grpcServer, &rateLimitServer{limiter: limiter})
 	rlsv3.RegisterRateLimitServiceServer(grpcServer, &rateLimitServer{limiter: limiter})
 
 	if *reflect {

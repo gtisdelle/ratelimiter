@@ -17,7 +17,7 @@ func (s fakeStore) Allow(ctx context.Context, key string, hits uint64) (bool, in
 	return s.allowFunc()
 }
 
-var _ Store = fakeStore{}
+var _ store = fakeStore{}
 
 func TestAllowUnderLimit(t *testing.T) {
 	store := fakeStore{
