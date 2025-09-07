@@ -23,7 +23,7 @@ func TestAllowUnderLimit(t *testing.T) {
 	store := fakeStore{
 		allowFunc: func() (bool, error) { return true, nil },
 	}
-	limiter := NewRateLimiter(store)
+	limiter := NewRateLimiter(store, 10)
 
 	result, err := limiter.Allow(t.Context(), "foo", 1, make([]*ratelimitv3.RateLimitDescriptor, 0))
 
@@ -39,7 +39,7 @@ func TestAllowOverLimit(t *testing.T) {
 	store := fakeStore{
 		allowFunc: func() (bool, error) { return false, nil },
 	}
-	limiter := NewRateLimiter(store)
+	limiter := NewRateLimiter(store, 10)
 	descriptors := []*ratelimitv3.RateLimitDescriptor{
 		{Entries: []*ratelimitv3.RateLimitDescriptor_Entry{{Key: "type", Value: "legacy"}}}}
 	result, err := limiter.Allow(t.Context(), "foo", 1, descriptors)

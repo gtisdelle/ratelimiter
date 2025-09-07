@@ -91,7 +91,7 @@ func main() {
 	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(unaryLoggingInterceptor))
 	clock := ratelimiter.NewClock()
 	store := ratelimiter.NewRedisStore(rdb, clock, ratelimiter.Config{BucketSize: *bucketSize, Rate: *rate})
-	limiter := ratelimiter.NewRateLimiter(store)
+	limiter := ratelimiter.NewRateLimiter(store, *bucketSize)
 	// ratelimitv1.RegisterRateLimitServiceServer(grpcServer, &rateLimitServer{limiter: limiter})
 	rlsv3.RegisterRateLimitServiceServer(grpcServer, &rateLimitServer{limiter: limiter})
 

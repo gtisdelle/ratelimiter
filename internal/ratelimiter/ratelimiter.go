@@ -9,17 +9,23 @@ import (
 	rlsv3 "github.com/envoyproxy/go-control-plane/envoy/service/ratelimit/v3"
 )
 
+var (
+	DEFAULT = "DEFAULT"
+)
+
 type RateLimiter interface {
 	Allow(ctx context.Context, domain string, hits uint64, descriptors []*rlsv3common.RateLimitDescriptor) (*rlsv3.RateLimitResponse, error)
 }
 
 type limiter struct {
-	store Store
+	store        Store
+	defaultLimit int
 }
 
-func NewRateLimiter(store Store) RateLimiter {
+func NewRateLimiter(store Store, defaultLimit int) RateLimiter {
 	return &limiter{
-		store: store,
+		store:        store,
+		defaultLimit: defaultLimit,
 	}
 }
 
@@ -39,6 +45,11 @@ func (l *limiter) Allow(ctx context.Context, domain string, hits uint64, descrip
 		}
 		statuses = append(statuses, &rlsv3.RateLimitResponse_DescriptorStatus{
 			Code: code,
+			CurrentLimit: &rlsv3.RateLimitResponse_RateLimit{
+				Name:            DEFAULT,
+				RequestsPerUnit: uint32(l.defaultLimit),
+				Unit:            rlsv3.RateLimitResponse_RateLimit_SECOND,
+			},
 		})
 	}
 
