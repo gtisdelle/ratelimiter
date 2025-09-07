@@ -2,6 +2,7 @@ package limit
 
 import (
 	"context"
+	"fmt"
 
 	rlsv3common "github.com/envoyproxy/go-control-plane/envoy/extensions/common/ratelimit/v3"
 	rlsv3 "github.com/envoyproxy/go-control-plane/envoy/service/ratelimit/v3"
@@ -34,7 +35,7 @@ func (l *Limiter) Allow(ctx context.Context, domain string, hits uint64, descrip
 		key := BuildKey(domain, descriptor)
 		allow, remaining, err := l.store.Allow(ctx, key, getHits(hits, descriptor))
 		if err != nil {
-			return &rlsv3.RateLimitResponse{OverallCode: rlsv3.RateLimitResponse_UNKNOWN}, nil
+			return nil, fmt.Errorf("limit %s: %w", key, err)
 		}
 		code := rlsv3.RateLimitResponse_OK
 		if !allow {

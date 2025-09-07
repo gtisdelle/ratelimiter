@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"log"
 
 	rlsv3common "github.com/envoyproxy/go-control-plane/envoy/extensions/common/ratelimit/v3"
 	rlsv3 "github.com/envoyproxy/go-control-plane/envoy/service/ratelimit/v3"
@@ -30,8 +31,8 @@ func (s *rateLimitServer) ShouldRateLimit(ctx context.Context, req *rlsv3.RateLi
 
 	res, err := s.limiter.Allow(ctx, req.Domain, uint64(req.HitsAddend), req.Descriptors)
 	if err != nil {
-		// TODO
-		return nil, nil
+		log.Printf("rpc ShouldRateLimit: %v", err)
+		return &rlsv3.RateLimitResponse{OverallCode: rlsv3.RateLimitResponse_UNKNOWN}, nil
 	}
 
 	return res, nil
