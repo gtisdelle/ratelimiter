@@ -10,10 +10,10 @@ import (
 )
 
 type fakeStore struct {
-	allowFunc func() (bool, error)
+	allowFunc func() (bool, int, error)
 }
 
-func (s fakeStore) Allow(ctx context.Context, key string, hits uint64) (bool, error) {
+func (s fakeStore) Allow(ctx context.Context, key string, hits uint64) (bool, int, error) {
 	return s.allowFunc()
 }
 
@@ -21,7 +21,7 @@ var _ Store = fakeStore{}
 
 func TestAllowUnderLimit(t *testing.T) {
 	store := fakeStore{
-		allowFunc: func() (bool, error) { return true, nil },
+		allowFunc: func() (bool, int, error) { return true, 0, nil },
 	}
 	limiter := NewRateLimiter(store, 10)
 
@@ -37,7 +37,7 @@ func TestAllowUnderLimit(t *testing.T) {
 
 func TestAllowOverLimit(t *testing.T) {
 	store := fakeStore{
-		allowFunc: func() (bool, error) { return false, nil },
+		allowFunc: func() (bool, int, error) { return false, 0, nil },
 	}
 	limiter := NewRateLimiter(store, 10)
 	descriptors := []*ratelimitv3.RateLimitDescriptor{

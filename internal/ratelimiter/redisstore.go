@@ -26,7 +26,7 @@ func NewRedisStore(rdb *redis.Client, clock Clock, cfg Config) Store {
 	}
 }
 
-func (s *redisStore) Allow(ctx context.Context, key string, hits uint64) (bool, error) {
+func (s *redisStore) Allow(ctx context.Context, key string, hits uint64) (bool, int, error) {
 	lua := redis.NewScript(`
 	local key = KEYS[1]
 	local rate = tonumber(ARGV[1])
@@ -67,20 +67,32 @@ func (s *redisStore) Allow(ctx context.Context, key string, hits uint64) (bool, 
 	
 	-- redis.log(redis.LOG_WARNING, "Usage consumed - tokens: " .. tostring(tokens) .. ", lastRefill: " .. tostring(lastRefill) .. ", allow: " .. allow)
 
-	return allow
+	return { allow, tokens }
 	`)
 
 	keys := []string{key}
 	args := []any{s.cfg.Rate, s.cfg.BucketSize, s.clock.Now().UnixMilli(), hits}
 	result, err := lua.Eval(ctx, s.rdb, keys, args).Result()
 	if err != nil {
-		return false, fmt.Errorf("token bucket lua script: %w", err)
+		return false, 0, fmt.Errorf("token bucket lua script: %w", err)
 	}
-	allow, ok := result.(int64)
+	arr, ok := result.([]any)
 	if !ok {
-		return false, fmt.Errorf("invalid response type from lua script: %T", result)
+		return false, 0, fmt.Errorf("invalid response type from lua script: %T", result)
 	}
-	return allow > 0, nil
+	if len(arr) != 2 {
+		return false, 0, fmt.Errorf("invalid response size from lua script: %d", len(arr))
+	}
+	allow, ok := arr[0].(int64)
+	if !ok {
+		return false, 0, fmt.Errorf("invalid first array value type from lua script: %T", arr[0])
+	}
+	remaining, ok := arr[1].(int64)
+	if !ok {
+		return false, 0, fmt.Errorf("invalid first array value type from lua script: %T", arr[1])
+	}
+
+	return allow > 0, int(remaining), nil
 }
 
 var _ Store = &redisStore{}

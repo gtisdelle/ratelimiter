@@ -34,7 +34,7 @@ func (l *limiter) Allow(ctx context.Context, domain string, hits uint64, descrip
 	overall := rlsv3.RateLimitResponse_OK
 	for _, descriptor := range descriptors {
 		key := keyfmt.BuildKey(domain, descriptor)
-		allow, err := l.store.Allow(ctx, key, getHits(hits, descriptor))
+		allow, remaining, err := l.store.Allow(ctx, key, getHits(hits, descriptor))
 		if err != nil {
 			return &rlsv3.RateLimitResponse{OverallCode: rlsv3.RateLimitResponse_UNKNOWN}, nil
 		}
@@ -50,6 +50,7 @@ func (l *limiter) Allow(ctx context.Context, domain string, hits uint64, descrip
 				RequestsPerUnit: uint32(l.defaultLimit),
 				Unit:            rlsv3.RateLimitResponse_RateLimit_SECOND,
 			},
+			LimitRemaining: uint32(remaining),
 		})
 	}
 
