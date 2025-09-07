@@ -10,31 +10,14 @@ import (
 	"syscall"
 	"time"
 
-	rlsv3common "github.com/envoyproxy/go-control-plane/envoy/extensions/common/ratelimit/v3"
-	rlsv3 "github.com/envoyproxy/go-control-plane/envoy/service/ratelimit/v3"
 	"github.com/gtisdelle/ratelimiter/internal/limit"
 	"github.com/gtisdelle/ratelimiter/internal/server"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	grpchealth "google.golang.org/grpc/health"
 	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/status"
 )
-
-var quietCodes = map[codes.Code]struct{}{
-	codes.Canceled:           {},
-	codes.InvalidArgument:    {},
-	codes.NotFound:           {},
-	codes.AlreadyExists:      {},
-	codes.PermissionDenied:   {},
-	codes.ResourceExhausted:  {},
-	codes.FailedPrecondition: {},
-	codes.Aborted:            {},
-	codes.OutOfRange:         {},
-	codes.Unauthenticated:    {},
-}
 
 var (
 	bucketSize = flag.Int("bucket", 10, "size of the token bucket")
@@ -42,46 +25,6 @@ var (
 	listenAddr = flag.String("listen", ":50051", "port")
 	reflect    = flag.Bool("reflect", false, "enable server reflection (use for dev only)")
 )
-
-type limiter interface {
-	Allow(ctx context.Context, domain string, hits uint64, descriptors []*rlsv3common.RateLimitDescriptor) (*rlsv3.RateLimitResponse, error)
-}
-
-type rateLimitServer struct {
-	rlsv3.UnimplementedRateLimitServiceServer
-	limiter limiter
-}
-
-func (s *rateLimitServer) ShouldRateLimit(ctx context.Context, req *rlsv3.RateLimitRequest) (*rlsv3.RateLimitResponse, error) {
-	if req == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "request is nil")
-	}
-	if req.Domain == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "domain is required")
-	}
-
-	res, err := s.limiter.Allow(ctx, req.Domain, uint64(req.HitsAddend), req.Descriptors)
-	if err != nil {
-		// TODO
-		return nil, nil
-	}
-
-	return res, nil
-}
-
-var _ rlsv3.RateLimitServiceServer = &rateLimitServer{}
-
-func unaryLoggingInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-	m, err := handler(ctx, req)
-	if err == nil {
-		return m, err
-	}
-	code := status.Code(err)
-	if _, ok := quietCodes[code]; !ok {
-		log.Printf("rpc=%s code=%s err=%v", info.FullMethod, code, err)
-	}
-	return m, err
-}
 
 func main() {
 	flag.Parse()
@@ -93,11 +36,11 @@ func main() {
 
 	rdb := redis.NewClient(&redis.Options{Addr: os.Getenv("REDIS_ADDR")})
 
-	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(unaryLoggingInterceptor))
+	grpcServer := grpc.NewServer()
 	clock := limit.NewClock()
 	store := limit.NewRedisStore(rdb, clock, limit.Config{BucketSize: *bucketSize, Rate: *rate})
 	limiter := limit.NewLimiter(store, *bucketSize)
-	rlsv3.RegisterRateLimitServiceServer(grpcServer, &rateLimitServer{limiter: limiter})
+	server.Register(grpcServer, limiter)
 
 	if *reflect {
 		log.Println("reflection enabled")
