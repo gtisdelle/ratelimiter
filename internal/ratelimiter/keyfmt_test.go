@@ -1,4 +1,4 @@
-package keyfmt
+package ratelimiter
 
 import (
 	"fmt"
