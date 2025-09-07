@@ -1,4 +1,4 @@
-package ratelimiter
+package limit
 
 import (
 	"context"
@@ -20,7 +20,7 @@ type Limiter struct {
 	defaultLimit int
 }
 
-func NewRateLimiter(store store, defaultLimit int) *Limiter {
+func NewLimiter(store store, defaultLimit int) *Limiter {
 	return &Limiter{
 		store:        store,
 		defaultLimit: defaultLimit,

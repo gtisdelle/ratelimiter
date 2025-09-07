@@ -12,7 +12,7 @@ import (
 
 	rlsv3common "github.com/envoyproxy/go-control-plane/envoy/extensions/common/ratelimit/v3"
 	rlsv3 "github.com/envoyproxy/go-control-plane/envoy/service/ratelimit/v3"
-	"github.com/gtisdelle/ratelimiter/internal/ratelimiter"
+	"github.com/gtisdelle/ratelimiter/internal/limit"
 	"github.com/gtisdelle/ratelimiter/internal/server"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
@@ -94,9 +94,9 @@ func main() {
 	rdb := redis.NewClient(&redis.Options{Addr: os.Getenv("REDIS_ADDR")})
 
 	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(unaryLoggingInterceptor))
-	clock := ratelimiter.NewClock()
-	store := ratelimiter.NewRedisStore(rdb, clock, ratelimiter.Config{BucketSize: *bucketSize, Rate: *rate})
-	limiter := ratelimiter.NewRateLimiter(store, *bucketSize)
+	clock := limit.NewClock()
+	store := limit.NewRedisStore(rdb, clock, limit.Config{BucketSize: *bucketSize, Rate: *rate})
+	limiter := limit.NewLimiter(store, *bucketSize)
 	rlsv3.RegisterRateLimitServiceServer(grpcServer, &rateLimitServer{limiter: limiter})
 
 	if *reflect {
