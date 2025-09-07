@@ -23,7 +23,7 @@ type redisStore struct {
 	cfg   Config
 }
 
-func NewRedisStore(rdb *redis.Client, clock clock, cfg Config) store {
+func NewRedisStore(rdb *redis.Client, clock clock, cfg Config) *redisStore {
 	return &redisStore{
 		rdb:   rdb,
 		clock: clock,
