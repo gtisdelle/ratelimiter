@@ -13,3 +13,20 @@ services:
     environment:
       - REDIS_ADDR=redis:6379
     command: ["--reflect"]
+
+  echo:
+    image: ealen/echo-server
+    ports:
+      - "8080:80"
+
+  gateway:
+    image: envoyproxy/envoy:dev-0043eb07da0264dc34cf653eb3633e02ca2833d4
+    ports:
+      - "10000:10000"
+    depends_on:
+      - echo
+    volumes:
+      - type: bind
+        source: ./example/envoy-config.yaml
+        target: /envoy-custom.yaml
+    command: ["-c", "/envoy-custom.yaml"]
