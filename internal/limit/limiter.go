@@ -64,5 +64,5 @@ func getHits(reqHits uint64, descriptor *rlsv3common.RateLimitDescriptor) uint64
 		return descriptor.HitsAddend.Value
 	}
 
-	return reqHits
+	return max(1, reqHits)
 }
